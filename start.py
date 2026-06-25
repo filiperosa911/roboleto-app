@@ -6,8 +6,6 @@ Execute com:  python start.py
 from __future__ import annotations
 
 import asyncio
-import subprocess
-import sys
 import threading
 import time
 import webbrowser
@@ -23,12 +21,13 @@ def _abrir_browser():
 
 
 def main() -> None:
+    from pathlib import Path
     from seguros.config import load_config, config_for_insurer
-    from seguros.logging_setup import configure_logging
+    from seguros.logging_setup import setup_logging
     from dashboard.worker import BrowserWorker
     from dashboard.app import create_app
 
-    configure_logging()
+    setup_logging(Path("logs"))
 
     cfg_base = load_config(live=True)
 
