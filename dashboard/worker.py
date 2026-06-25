@@ -16,6 +16,15 @@ from typing import Any
 log = logging.getLogger("roboleto.worker")
 
 
+class _Notifier:
+    """Adapta o push de log do worker para a interface .notify() esperada pelos conectores."""
+    def __init__(self, push_fn):
+        self._push = push_fn
+
+    def notify(self, message: str) -> None:
+        self._push(message)
+
+
 class BrowserWorker:
     def __init__(self, config, loop: asyncio.AbstractEventLoop):
         self._config = config
@@ -79,16 +88,18 @@ class BrowserWorker:
     def _get_connector(self):
         if self._connector is None:
             from seguros.connectors.factory import build_connector
-            self._connector = build_connector(self._config, notifier=self._notifier)
+            notifier = _Notifier(self._push_log)
+            self._connector = build_connector(self._config, notifier=notifier)
             self._connector.start()
         return self._connector
 
-    def _notifier(self, msg: str, level: str = "info") -> None:
-        """Envia uma mensagem de log para o SSE."""
+    def _push_log(self, msg: str, nivel: str = "info") -> None:
+        """Envia uma linha de log para o SSE (thread-safe)."""
         if self._log_q is None:
             return
-        payload = {"msg": msg, "nivel": level}
-        asyncio.run_coroutine_threadsafe(self._log_q.put(payload), self._loop)
+        asyncio.run_coroutine_threadsafe(
+            self._log_q.put({"msg": msg, "nivel": nivel}), self._loop
+        )
 
     def _do_check_session(self) -> bool:
         try:
