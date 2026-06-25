@@ -1,0 +1,55 @@
+# Selectors da Prudential — "Relatório de Atraso"
+# (ASP.NET WebForms em saa.prudential.com.br/DBClient/PAG_DBClient_ApoliceAtraso.aspx)
+#
+# CALIBRADO AO VIVO em 2026-06-23 (login do usuário wle001), a partir do DOM real
+# capturado em artifacts/prudential/login-calib/ + live-calib/.
+#
+# A grade é chaveada por APÓLICE (não CPF). O telefone e o valor (Prêmio) vêm na
+# própria grade. A grade não tem id estável (GridView), então é achada pelo
+# cabeçalho-chave "Apólice" (scraping.find_results_table) e as colunas são
+# resolvidas por TEXTO do cabeçalho (atraso.col).
+
+common:
+  # Marcador de "página pronta" do relatório (form ASP.NET).
+  ready_marker:
+    css: 'form#aspnetForm, #ctl00_CPH_BTN_Filtro'
+
+atraso:
+  form:
+    # "Dias Atraso: [de] a [até]" — preenchemos o "de" com o mínimo (ex.: 1).
+    # id real: ctl00_CPH_CTR_Qt_DiaPrimVenctoEmAberto_TXT_Qt_DiaPrimVenctoEmAbertoIni
+    dias_atraso_de:
+      css: 'input[id$="DiaPrimVenctoEmAbertoIni"]'
+    # <input type="submit" value="Filtrar" id="ctl00_CPH_BTN_Filtro">
+    filtrar_button:
+      css: 'input[id$="BTN_Filtro"]'
+    # <input type="submit" value="Excel" id="ctl00_CPH_BTN_Excel"> (fonte alternativa)
+    excel_button:
+      css: 'input[id$="BTN_Excel"]'
+  # Grade de resultados (sem id estável). Só uma DICA; o scraper acha pela
+  # presença do cabeçalho "Apólice" e pega a tabela com mais linhas.
+  table:
+    css: 'table'
+  # Mapa coluna lógica -> texto do CABEÇALHO (resolvido por nome, não posição).
+  # Cabeçalho real: "| Apólice | Responsável pelo Pagamento / Segurado |
+  #   Contatos (Responsável pelo Pagamento) | Periodicidade Pagto. | Emissão |
+  #   Pago até / Vencido Em | Última Mensagem ... | Prêmio | ..."
+  col:
+    apolice: "Apólice"       # chave (ex.: 74 / 000887908 / Ativa -> dígitos)
+    nome: "Segurado"         # casa "Responsável pelo Pagamento / Segurado"
+    telefone: "Contatos"     # ex.: "Cel.: (11) 95430-0078"
+    vencimento: "Vencido"    # casa "Pago até / Vencido Em"
+    valor: "Prêmio"          # ex.: "537,50"
+
+# Página de emissão de segunda via de boleto
+# (PAG_DBClient_EmissaoSegundaViaBoleto.aspx)
+segunda_via:
+  # Radio button de seleção de parcela (GridView ASP.NET, id volátil)
+  radio_parcela:
+    css: 'input[name*="RBT_Selecionado"]'
+  # Botão que abre o boleto em nova janela
+  btn_imprimir:
+    css: 'input[name="BTN_Imprimir"]'
+  # Botão que envia o boleto por e-mail ao cliente
+  btn_enviar:
+    css: 'input[name="BTN_Enviar"]'

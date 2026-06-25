@@ -1,0 +1,73 @@
+# =============================================================================
+# Seletores da Plataforma dos Produtores MAG (Salesforce Experience Cloud).
+#
+# Nível de LISTA calibrado em 2026-06-19 a partir dos dumps de --inspect.
+# Nível de DETALHE (contact.*, detail.*, modal.*) ainda precisa de um segundo
+# --inspect que abre o detalhe de um cliente (capturado automaticamente).
+#
+# Cada seletor é um mapa com UMA chave estratégica (ordem de robustez):
+#   role + name  > label > text > placeholder > title > css
+# XPATH É PROIBIDO (não atravessa shadow DOM do Lightning).
+# =============================================================================
+
+meta:
+  schema_version: 1
+  calibrado: sim            # lista + detalhe calibrados; modal no 1º --live
+
+auth:
+  # is_authenticated() usa URL (não depende disto). Usado só no --validate-selectors.
+  logged_in_marker: { text: "Notificações" }
+  login_form_marker: { css: "input[type=password]" }
+
+common:
+  spinner: { css: "lightning-spinner, .slds-spinner" }
+
+inadimplencias:
+  table: { role: table }
+  row: { role: row }
+  # A seta ">" é um <img> sem nome acessível na última célula -> o código abre o
+  # detalhe clicando na última célula da linha (ver connector._open_detail_by_cpf).
+  detail_arrow: { css: "td:last-child img" }
+  empty_state: { text: "Nenhum resultado" }
+  # Paginação: o "próximo" é SEMPRE o último botão da área (à direita da seta).
+  pagination_next: { css: ".pagination .button-area > button:last-child" }
+  pagination_status: { text: "Mostrando" }
+  col:                            # texto exato do cabeçalho (resolvido por nome)
+    cpf: "CPF do cliente"
+    nome: "Cliente"
+    vencimento: "Inadimplência mais antiga"
+    valor: "Valor total inadimplente"
+    status: "Status"
+
+clientes:
+  search_input: { placeholder: "Buscar em clientes" }
+  detail_arrow: { css: "td:last-child img" }
+  join_mode: search
+  col:
+    cpf: "CPF"
+    nome: "Nome"
+    status: "Status"
+
+# Detalhe do cliente (Detalhes do Cliente): cada campo é
+#   <div class="item"><div class="label">E-mail</div>...<div class="value">x</div></div>
+# A leitura é feita no código (connector._read_item_value), por label exato.
+contact:
+  contato_header: { text: "Contato", exact: true }
+
+# Detalhe da inadimplência (Inadimplências do Cliente).
+detail:
+  tab_nao_trabalhadas: { text: "Não trabalhadas", exact: true }
+  tab_trabalhadas: { text: "Trabalhadas", exact: true }
+  # checkbox "selecionar todos" no cabeçalho da tabela de inscrições.
+  master_checkbox: { css: "table thead input[type='checkbox']" }
+  cobrar_button: { role: button, name: "Cobrar inadimplência" }
+
+# Modal "Gerar link de pagamento" — calibrar no 1º --live --limit 1 (o inspect
+# não clica em "Cobrar" para não mutar). Palpites com fallback em cascata.
+modal:
+  root: { role: dialog }
+  gerar_link_button: { text: "Gerar link de pagamento" }
+  link_output: { css: "input[readonly], a[href^='http']" }
+  copy_button: { text: "Copiar" }
+  has_copy_button: false
+  close: { role: button, name: "Fechar" }

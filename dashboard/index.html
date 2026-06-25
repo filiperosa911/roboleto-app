@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Régua de Cobrança</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #1e293b; }
+
+  header { background: #1e3a5f; color: #fff; padding: 18px 40px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 1.25rem; font-weight: 600; }
+  header span { font-size: 0.85rem; opacity: 0.7; }
+
+  .container { max-width: 1100px; margin: 28px auto; padding: 0 20px; }
+
+  /* Abas de seguradora */
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tab { padding: 9px 22px; border-radius: 6px; border: 2px solid #cbd5e1; background: #fff;
+         cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #64748b; transition: all .15s; }
+  .tab:hover { border-color: #1e3a5f; color: #1e3a5f; }
+  .tab.ativa { border-color: #1e3a5f; background: #1e3a5f; color: #fff; }
+
+  /* Status de sessão */
+  .sessao-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+                background: #fff; padding: 12px 18px; border-radius: 8px;
+                box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.verde  { background: #22c55e; box-shadow: 0 0 0 3px #dcfce7; }
+  .dot.amarelo { background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+  .dot.vermelho { background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; }
+  #txt-sessao { font-size: 0.9rem; flex: 1; }
+  .btn-sm { padding: 7px 16px; border: none; border-radius: 6px; font-size: 0.85rem;
+             cursor: pointer; font-weight: 500; }
+
+  /* Ações */
+  .acoes { display: flex; gap: 12px; margin-bottom: 20px; }
+  .btn { padding: 11px 26px; border: none; border-radius: 8px; font-size: 0.95rem;
+          font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-azul   { background: #1e3a5f; color: #fff; }
+  .btn-verde  { background: #16a34a; color: #fff; }
+  .btn-azul:hover:not(:disabled)  { background: #2a4f80; }
+  .btn-verde:hover:not(:disabled) { background: #15803d; }
+  .btn-login  { background: #f59e0b; color: #fff; }
+  .btn-login:hover { background: #d97706; }
+
+  /* Resumo */
+  #resumo { font-size: 0.88rem; color: #64748b; margin-bottom: 12px; }
+
+  /* Tabela */
+  .tabela-wrap { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #f8fafc; }
+  th { padding: 13px 16px; text-align: left; font-size: 0.8rem; font-weight: 600;
+       color: #64748b; text-transform: uppercase; letter-spacing: .04em;
+       border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; white-space: nowrap; }
+  th:hover { background: #f1f5f9; color: #1e3a5f; }
+  th.sorted { color: #1e3a5f; }
+  .icone-sort { margin-left: 4px; opacity: 0.35; }
+  th.sorted .icone-sort { opacity: 1; }
+  td { padding: 13px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #f8fafc; }
+
+  /* Badges de dias em atraso */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+  .badge-alto   { background: #fee2e2; color: #b91c1c; }
+  .badge-medio  { background: #fef3c7; color: #92400e; }
+  .badge-baixo  { background: #dcfce7; color: #166534; }
+
+  /* Vazio */
+  .vazio { text-align: center; padding: 48px; color: #94a3b8; font-size: 0.9rem; }
+
+  /* Área de log */
+  #log-wrap { margin-top: 24px; display: none; }
+  #log-titulo { font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+  #log-area { background: #0f172a; color: #94a3b8; padding: 18px 20px; border-radius: 10px;
+              font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem;
+              height: 220px; overflow-y: auto; }
+  .ll      { margin: 2px 0; line-height: 1.5; }
+  .ll.ok   { color: #4ade80; }
+  .ll.warn { color: #facc15; }
+  .ll.erro { color: #f87171; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Régua de Cobrança</h1>
+    <span>Wladimir Leis — Life Planner</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Abas de seguradora -->
+  <div class="tabs">
+    <button class="tab ativa" id="tab-prudential" onclick="selecionarSeguradora('prudential', this)">Prudential</button>
+    <button class="tab"       id="tab-mag"        onclick="selecionarSeguradora('mag', this)">MAG Seguros</button>
+  </div>
+
+  <!-- Status de sessão -->
+  <div class="sessao-bar">
+    <div class="dot amarelo" id="dot"></div>
+    <span id="txt-sessao">Verificando sessão...</span>
+    <button class="btn-sm btn-login" id="btn-login" onclick="fazerLogin()" style="display:none">
+      🔐 Fazer Login
+    </button>
+  </div>
+
+  <!-- Botões -->
+  <div class="acoes">
+    <button class="btn btn-azul" id="btn-carregar" onclick="carregar()">
+      🔍 Carregar Inadimplentes
+    </button>
+    <button class="btn btn-verde" id="btn-cobrar" onclick="cobrar()" disabled>
+      📤 Iniciar Cobrança
+    </button>
+  </div>
+
+  <div id="resumo"></div>
+
+  <!-- Tabela -->
+  <div class="tabela-wrap" id="tabela-wrap">
+    <div class="vazio">Clique em <strong>Carregar Inadimplentes</strong> para começar.</div>
+  </div>
+
+  <!-- Log de progresso -->
+  <div id="log-wrap">
+    <div id="log-titulo">Progresso da cobrança</div>
+    <div id="log-area"></div>
+  </div>
+
+</div>
+
+<script>
+  let seguradora = 'prudential';
+  let dados = [];
+  let sortCol = 'dias_atraso';
+  let sortDir = -1; // -1 = decrescente
+
+  // ── Troca de seguradora ───────────────────────────────────────────────────
+  function selecionarSeguradora(s, btn) {
+    seguradora = s;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativa'));
+    btn.classList.add('ativa');
+    dados = [];
+    renderTabela();
+    document.getElementById('resumo').textContent = '';
+    document.getElementById('btn-cobrar').disabled = true;
+    verificarSessao();
+  }
+
+  // ── Verificação de sessão ─────────────────────────────────────────────────
+  async function verificarSessao() {
+    const dot  = document.getElementById('dot');
+    const txt  = document.getElementById('txt-sessao');
+    const btnL = document.getElementById('btn-login');
+    dot.className = 'dot amarelo';
+    txt.textContent = 'Verificando sessão...';
+    try {
+      const r = await fetch(`/api/sessao?seguradora=${seguradora}`);
+      const d = await r.json();
+      if (d.ativa) {
+        dot.className = 'dot verde';
+        txt.textContent = 'Sessão ativa — pronto para usar';
+        btnL.style.display = 'none';
+      } else {
+        dot.className = 'dot vermelho';
+        txt.textContent = 'Sessão expirada — clique em Fazer Login para continuar';
+        btnL.style.display = '';
+      }
+    } catch {
+      dot.className = 'dot vermelho';
+      txt.textContent = 'Não foi possível verificar a sessão';
+      btnL.style.display = '';
+    }
+  }
+
+  async function fazerLogin() {
+    const btn = document.getElementById('btn-login');
+    btn.textContent = '⏳ Aguardando login...';
+    btn.disabled = true;
+    try {
+      await fetch(`/api/login?seguradora=${seguradora}`, { method: 'POST' });
+      await verificarSessao();
+    } finally {
+      btn.textContent = '🔐 Fazer Login';
+      btn.disabled = false;
+    }
+  }
+
+  // ── Carregar inadimplentes ────────────────────────────────────────────────
+  async function carregar() {
+    const btn = document.getElementById('btn-carregar');
+    btn.disabled = true;
+    btn.textContent = '⏳ Carregando...';
+    document.getElementById('btn-cobrar').disabled = true;
+    document.getElementById('resumo').textContent = '';
+
+    try {
+      const r = await fetch(`/api/inadimplentes?seguradora=${seguradora}`);
+      if (!r.ok) { const t = await r.text(); throw new Error(t); }
+      dados = await r.json();
+      renderTabela();
+      const resumo = document.getElementById('resumo');
+      if (dados.length === 0) {
+        resumo.textContent = 'Nenhum cliente em atraso encontrado.';
+      } else {
+        resumo.textContent = `${dados.length} cliente(s) em atraso encontrado(s).`;
+        document.getElementById('btn-cobrar').disabled = false;
+      }
+    } catch (e) {
+      alert('Erro ao carregar inadimplentes:\n' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 Carregar Inadimplentes';
+    }
+  }
+
+  // ── Tabela com ordenação ──────────────────────────────────────────────────
+  const COLUNAS = [
+    { key: 'nome',        label: 'Nome' },
+    { key: 'apolice',     label: 'Apólice' },
+    { key: 'valor',       label: 'Valor' },
+    { key: 'vencimento',  label: 'Vencimento' },
+    { key: 'dias_atraso', label: 'Dias em Atraso' },
+  ];
+
+  function sortarPor(col) {
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = -1; }
+    renderTabela();
+  }
+
+  function renderTabela() {
+    const wrap = document.getElementById('tabela-wrap');
+
+    if (!dados.length) {
+      wrap.innerHTML = '<div class="vazio">Clique em <strong>Carregar Inadimplentes</strong> para começar.</div>';
+      return;
+    }
+
+    const sorted = [...dados].sort((a, b) => {
+      let va = a[sortCol], vb = b[sortCol];
+      if (va == null) va = sortDir === -1 ? -Infinity :  Infinity;
+      if (vb == null) vb = sortDir === -1 ? -Infinity :  Infinity;
+      if (typeof va === 'string') return sortDir * va.localeCompare(vb, 'pt-BR');
+      return sortDir * (va - vb);
+    });
+
+    let html = '<table><thead><tr>';
+    for (const c of COLUNAS) {
+      const ativa = sortCol === c.key;
+      const icone = ativa ? (sortDir === -1 ? '▼' : '▲') : '⇅';
+      html += `<th class="${ativa ? 'sorted' : ''}" onclick="sortarPor('${c.key}')">
+                 ${c.label} <span class="icone-sort">${icone}</span>
+               </th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    for (const d of sorted) {
+      const dias = d.dias_atraso;
+      let badge = '<span style="color:#94a3b8">—</span>';
+      if (dias != null) {
+        const cls = dias >= 30 ? 'alto' : dias >= 10 ? 'medio' : 'baixo';
+        badge = `<span class="badge badge-${cls}">${dias}d</span>`;
+      }
+      html += `<tr>
+        <td>${d.nome}</td>
+        <td>${d.apolice}</td>
+        <td>${d.valor}</td>
+        <td>${d.vencimento || '—'}</td>
+        <td>${badge}</td>
+      </tr>`;
+    }
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  // ── Iniciar cobrança ──────────────────────────────────────────────────────
+  async function cobrar() {
+    if (!confirm(`Iniciar cobrança para ${dados.length} cliente(s) em atraso?\n\nOs boletos serão gerados e enviados via WhatsApp.`))
+      return;
+
+    const logWrap = document.getElementById('log-wrap');
+    const logArea = document.getElementById('log-area');
+    logWrap.style.display = 'block';
+    logArea.innerHTML = '';
+
+    document.getElementById('btn-cobrar').disabled   = true;
+    document.getElementById('btn-carregar').disabled = true;
+
+    // Fire-and-forget no servidor
+    fetch(`/api/cobrar?seguradora=${seguradora}`, { method: 'POST' });
+
+    // Streaming de logs via SSE
+    const es = new EventSource(`/api/stream?seguradora=${seguradora}`);
+    es.onmessage = function (e) {
+      const data = JSON.parse(e.data);
+      if (Object.keys(data).length === 0) return; // keepalive
+
+      if (data.msg) {
+        const linha = document.createElement('div');
+        linha.className = 'll ' + (data.nivel || 'info');
+        linha.textContent = new Date().toLocaleTimeString('pt-BR') + ' › ' + data.msg;
+        logArea.appendChild(linha);
+        logArea.scrollTop = logArea.scrollHeight;
+      }
+
+      if (data.fim) {
+        es.close();
+        document.getElementById('btn-cobrar').disabled   = false;
+        document.getElementById('btn-carregar').disabled = false;
+      }
+    };
+    es.onerror = function () {
+      es.close();
+      document.getElementById('btn-cobrar').disabled   = false;
+      document.getElementById('btn-carregar').disabled = false;
+    };
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  verificarSessao();
+</script>
+</body>
+</html>
